@@ -2,6 +2,7 @@ library(tidyverse)
 library(readxl)
 library(lubridate)
 
+# LOAD ----
 # Location of excel file with a year for each sheet
 xls <- "./input/DC PCards.xlsx"
 
@@ -37,4 +38,27 @@ summary(cards1)
 
 # Single line load
 
-easy_cards <- pcard_load("./input/DC PCards.xlsx")
+cards <- pcard_load("./input/DC PCards.xlsx")
+
+
+# ANALYSIS ----
+
+cards %>%
+  group_by(Agency, Year) %>%
+  summarize(Count = n(),
+            Amount = sum(Amount)) 
+
+cards %>%
+  group_by(Agency, Year) %>%
+  summarize(Amount = sum(Amount)) %>%
+  pivot_wider(names_from = Year, values_from = Amount, values_fill = 0) %>%
+  arrange(desc(`2021`))
+
+cards %>%
+  group_by(Merchant2, Year) %>%
+  summarize(Amount = sum(Amount)) %>%
+  pivot_wider(names_from = Year, values_from = Amount, values_fill = 0) %>%
+  arrange(desc(`2021`))
+
+annual_pivot(cards, Agency)
+  

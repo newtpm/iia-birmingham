@@ -5,6 +5,7 @@ clean_merchants <- function(data) {
                "tst\\* " = "", "Sp *" = "", "intuit \\*in \\*" = "")
   
   tmp <- data %>%
+    filter(!is.na(ID)) %>%
     mutate(Merchant2 = str_to_lower(Merchant),
            Merchant2 = str_replace_all(Merchant2, removes),
            Merchant2 = ifelse(str_detect(Merchant2, "sq *"), str_replace(Merchant2, "sq \\*", ""), Merchant2),
@@ -50,6 +51,7 @@ fn_expand_date <- function(data, date_col) {
 
 # Build a wrapper function for the other functions
 
+
 pcard_load <- function(excel_path){
   
   
@@ -74,5 +76,18 @@ pcard_load <- function(excel_path){
   
   return(cards1)
 }
+
+# Pivot table
+
+annual_pivot <- function(data, column){
+  
+  data %>%
+    group_by({{column}}, Year) %>%
+    summarize(Amount = sum(Amount)) %>%
+    pivot_wider(names_from = Year, values_from = Amount, values_fill = 0) %>%
+    arrange(desc(`2021`))
+  
+}
+
 
   
