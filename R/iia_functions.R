@@ -1,5 +1,6 @@
+# User Functions for PCard Transformation 
 
-clean_merchants <- function(data) {
+fn_clean_merchants <- function(data) {
   
   removes <- c("www." = "", "ww " = "", "/" = "", "http:" = "", "-" = "", " #" = "", "#" = "",
                "tst\\* " = "", "Sp *" = "", "intuit \\*in \\*" = "")
@@ -44,15 +45,17 @@ clean_merchants <- function(data) {
 fn_expand_date <- function(data, date_col) {
   data %>% 
     mutate(Year = year({{date_col}}),
-    Month = month({{date_col}}, label = TRUE),
-    Day = wday({{date_col}}, label = TRUE))
+           #Year = factor(Year),
+           Month = month({{date_col}}, label = TRUE),
+           Day = wday({{date_col}}, label = TRUE))
+    
 }
 
 
 # Build a wrapper function for the other functions
 
 
-pcard_load <- function(excel_path){
+fn_pcard_load <- function(excel_path){
   
   
   # Names of Sheets
@@ -85,8 +88,14 @@ annual_pivot <- function(data, column){
     group_by({{column}}, Year) %>%
     summarize(Amount = sum(Amount)) %>%
     pivot_wider(names_from = Year, values_from = Amount, values_fill = 0) %>%
-    arrange(desc(`2021`))
+    arrange(desc(`2021`)) 
   
+}
+
+annual_filterpivot <- function(data, filter_col, filter_text, pivot_col){
+  data %>%
+    filter({{filter_col}} == filter_text) %>%
+    annual_pivot({{pivot_col}})
 }
 
 

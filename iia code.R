@@ -25,15 +25,23 @@ summary(cards0)
 
 cards1 <- cards0 %>%
   rename(ID = OBJECTID, Agency = AGENCY, TrxDate = TRANSACTION_DATE, Amount = TRANSACTION_AMOUNT,
-         Merchant = VENDOR_NAME, VendorState = VENDOR_STATE_PROVINCE, MCCDesc = MCC_DESCRIPTION) %>%
-  # mutate(Year = year(TrxDate),
-  #        Month = month(TrxDate, label = TRUE),
-  #        Day = wday(TrxDate, label = TRUE))
-  fn_expand_date(TrxDate) %>%
-  clean_merchants()
+         Merchant = VENDOR_NAME, VendorState = VENDOR_STATE_PROVINCE, MCCDesc = MCC_DESCRIPTION) 
 
+# Let's create our first function
+
+fn_simple <- function(data){
+  data %>%
+    rename(ID = OBJECTID, Agency = AGENCY, TrxDate = TRANSACTION_DATE, Amount = TRANSACTION_AMOUNT,
+           Merchant = VENDOR_NAME, VendorState = VENDOR_STATE_PROVINCE, MCCDesc = MCC_DESCRIPTION) 
+}
+
+identical(cards1, cards0 %>%
+  fn_simple())
 
 summary(cards1)
+
+#Let's look at our created functions for this 
+
 
 
 # Single line load
@@ -61,4 +69,10 @@ cards %>%
   arrange(desc(`2021`))
 
 annual_pivot(cards, Agency)
-  
+
+cards %>%
+  filter(Agency == "District of Columbia Public Schools") %>%
+  annual_pivot(Merchant2)
+
+cards %>%
+  annual_filterpivot(Agency, "District of Columbia Public Schools", Merchant2)
