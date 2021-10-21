@@ -18,68 +18,53 @@ library(janitor)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
 # Bit too much to remember so let's create our first function
-fn_setwd_here <- function() {
+
+fn_setwd_here <- function(){
   setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-} #find in Environment
+}
 
 fn_setwd_here()
-getwd()
-
 # LOAD ----
 
 # Location of excel file with a year for each sheet
 xls <- "./input/DC PCards.xlsx"
 
-# Names of Sheets
-?excel_sheets # question mark shows you the function documentation
-
+# Names of Sheets in Excel File
+?excel_sheets
 shts <- excel_sheets(xls)
-shts
 
 # Combine sheets into single table
-cards0 <- tibble() # create empty table
-str(cards0)
+card0 <- tibble()
+str(card0)
 
 for(sheetname in shts){
-  tmp <- read_excel(xls, sheet = sheetname )
+  tmp <- read_excel(xls, sheet = sheetname)
   
-  cards0 <- cards0 %>%
+  card0 <- card0 %>%
     bind_rows(tmp)
 }
 
-summary(cards0)
+summary(card0)
 
-# Tidy
+# Tidy & Introduce Pipes
 
-
-cards1 <- cards0 %>% # %>% is a pipe
+cards1 <- card0 %>% # %>% is a pipe
   rename(ID = OBJECTID, Agency = AGENCY, TrxDate = TRANSACTION_DATE, Amount = TRANSACTION_AMOUNT,
          Merchant = VENDOR_NAME, VendorState = VENDOR_STATE_PROVINCE, MCCDesc = MCC_DESCRIPTION) 
 
-summary(cards1)
 
 # Now we create our second function
 
-fn_simple <- function(data){
-  data %>%
-    rename(ID = OBJECTID, Agency = AGENCY, TrxDate = TRANSACTION_DATE, Amount = TRANSACTION_AMOUNT,
-           Merchant = VENDOR_NAME, MerchantState = VENDOR_STATE_PROVINCE, MCCDesc = MCC_DESCRIPTION) 
-}
-
-cards1b <- fn_simple(cards0)
-
-identical(cards1, cards1b)
+cards2 <- cards1 %>%
+  fn_clean_merchants() %>%
+  fn_expand_date(TrxDate)
 
 
 # PRE-BUILT FUNCTIONS ----
 
 source("./R/iia_load_functions.R")
 
-cards2 <- cards1 %>%
-  fn_clean_merchants() %>%
-  fn_expand_date(TrxDate)
-
-summary(cards2)
+cards <- fn_pcard_load("./input/DC PCards.xlsx")
 
 #Let's look at our created functions for this 
 
@@ -95,14 +80,7 @@ cards <- fn_pcard_load("./input/DC PCards.xlsx")
 # Tidy data good for pivot tables
 cards %>%
   group_by(Agency, Year) %>%
-  summarize(Count = n(),
-            Amount = sum(Amount),
-            .groups = "drop") 
-
-# pivot_wider spreads tidy data into columns
-cards %>%
-  group_by(Agency, Year) %>%
-  summarize(Amount = sum(Amount),
+  summarise(Amount = sum(Amount),
             .groups = "drop") %>%
   pivot_wider(names_from = Year, values_from = Amount, values_fill = 0) %>%
   arrange(desc(`2021`))
@@ -114,36 +92,40 @@ cards %>%
   pivot_wider(names_from = Year, values_from = Amount, values_fill = 0) %>%
   arrange(desc(`2021`))
 
-source("./R/iia_analysis_functions.R")
-
-fn_annual_pivot(cards, Agency)
-
-max(cards$TrxDate)
+fn_annual_pivot(cards, Merchant2)
 
 dcps_merch <- cards %>%
   filter(Agency == "District of Columbia Public Schools") %>%
   fn_annual_pivot(Merchant2)
-
-# pivot_longer gathers columns like monthly or annual cols into tidy format
 
 dcps_merch
 ?pivot_longer
 dcps_merch %>%
   pivot_longer(2:4, names_to = "Year", values_to = "Amount")
 
-dcps_desc <- cards %>%
-  fn_annual_filterpivot(Agency, "District of Columbia Public Schools", MCCDesc) %>%
-  head(10) %>%
-  adorn_totals(name = "TOTAL")
+# pivot_wider spreads tidy data into columns
+
+source("./R/iia_analysis_functions.R")
+
+
+# pivot_longer gathers columns like monthly or annual cols into tidy format
+
 
 source("./R/iia_table_functions.R")
 
-dcps_desc%>%
+dcps_desc <- cards %>%
+  fn_annual_filterpivot(Agency, "District of Columbia Public Schools", MCCDesc) %>%
+  head(10) %>%
+  adorn_totals(name = "TOTAL") %>%
   fn_easy_gt(gt_title = "DCPS High Spending",
              gt_subtitle = "CY21 is through Aug 31st",
              num_col_pattern = "CY",
              border_cols = "CY21")
 
+
+# AUTOMATED TESTING ----
+
+# Test for Split Payments
 
 # AUTOMATED TESTING ----
 
@@ -227,7 +209,7 @@ pmt_test <- function(data){
            Amount > 1000) %>%
     arrange(desc(Amount)) %>%
     mutate(Test = "Payments")
-    
+  
 }
 
 pmt_test(cards)    
@@ -235,11 +217,11 @@ pmt_test(cards)
 ############### 7. Universities
 
 univ_test <- function(data){
-    data %>%
-      filter(str_detect(str_to_lower(MCCDesc), "univ"),
-             Amount > 1000) %>%
-      arrange(desc(Amount)) %>%
-      mutate(Test = "Univ")
+  data %>%
+    filter(str_detect(str_to_lower(MCCDesc), "univ"),
+           Amount > 1000) %>%
+    arrange(desc(Amount)) %>%
+    mutate(Test = "Univ")
 }
 
 univ_test(cards)
@@ -268,19 +250,14 @@ select_results <- function(test_data, sample_per_grp = 3){
     slice_sample(n = sample_per_grp)
 }
 
-######## Run From Top
-
 
 test_final <- fn_pcard_load("./input/DC PCards.xlsx") %>%
   all_results() %>%
   select_results(3)
 
 
-easy_test <- function(file_path, sample_per_grp = 3){
-  fn_pcard_load(file_path) %>%
-    all_results() %>%
-    select_results(sample_per_grp)
-  
-}
+######## Run From Top
 
-easy_test_final <- easy_test("./input/DC PCards.xlsx")
+
+
+
